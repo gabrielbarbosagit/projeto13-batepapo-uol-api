@@ -35,7 +35,7 @@ app.listen(5000, () => {
 });
 
 
-/* POST */
+//POST PARTICIPANTS//
 
 
 app.post("/participants", async (req, res) => {
@@ -86,6 +86,87 @@ app.post("/participants", async (req, res) => {
       res.status(500).json({ error: "Erro no servidor" });
     }
   });
-  
 
+  //POST MESSAGES//
+
+
+  app.post("/messages", async (req, res) => {
+    try {
+      const { to, text, type } = req.body;
+      const from = req.header("User");
+  
+      console.log("from:", from);
+  
+      // Validar os dados da requisição usando Joi
+      const schema = Joi.object({
+        to: Joi.string().required(),
+        text: Joi.string().required(),
+        type: Joi.string().valid("message", "private_message").required(),
+      });
+  
+      const { error } = schema.validate({ to, text, type });
+  
+      if (error) {
+        console.log("error:", error);
+        return res.status(422).json({ error: "Parâmetros inválidos" });
+      }
+  
+      // Verificar se o participante remetente existe na lista de participantes
+      const db = client.db();
+      const participant = await db.collection("participants").findOne({ name: from });
+  
+      console.log("participant:", participant);
+  
+      if (!participant) {
+        return res.status(404).json({ error: "Remetente não encontrado" });
+      }
+  
+      // Salvar a mensagem na coleção "messages"
+      const message = {
+        from,
+        to,
+        text,
+        type,
+        time: dayjs().format("HH:mm:ss"),
+      };
+  
+      await db.collection("messages").insertOne(message);
+  
+      res.status(201).end();
+    } catch (error) {
+      console.error("Erro ao enviar mensagem:", error);
+      res.status(500).json({ error: "Erro no servidor" });
+    }
+  });
+  
+//POST STATUS//
+  
+app.post("/status", async (req, res) => {
+    try {
+      const participantName = req.header("User");
+  
+      if (!participantName) {
+        return res.status(404).end();
+      }
+  
+      const db = client.db();
+      const participant = await db.collection("participants").findOne({ name: participantName });
+  
+      if (!participant) {
+        return res.status(404).end();
+      }
+  
+      await db.collection("participants").updateOne(
+        { name: participantName },
+        { $set: { lastStatus: Date.now() } }
+      );
+  
+      res.status(200).end();
+    } catch (error) {
+      console.error("Erro ao atualizar status:", error);
+      res.status(500).json({ error: "Erro no servidor" });
+    }
+  });
+
+    
 
