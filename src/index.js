@@ -95,8 +95,6 @@ app.post("/participants", async (req, res) => {
       const { to, text, type } = req.body;
       const from = req.header("User");
   
-      console.log("from:", from);
-  
       // Validar os dados da requisição usando Joi
       const schema = Joi.object({
         to: Joi.string().required(),
@@ -107,15 +105,12 @@ app.post("/participants", async (req, res) => {
       const { error } = schema.validate({ to, text, type });
   
       if (error) {
-        console.log("error:", error);
         return res.status(422).json({ error: "Parâmetros inválidos" });
       }
   
       // Verificar se o participante remetente existe na lista de participantes
       const db = client.db();
       const participant = await db.collection("participants").findOne({ name: from });
-  
-      console.log("participant:", participant);
   
       if (!participant) {
         return res.status(404).json({ error: "Remetente não encontrado" });
@@ -139,6 +134,7 @@ app.post("/participants", async (req, res) => {
     }
   });
   
+  
 //POST STATUS//
   
 app.post("/status", async (req, res) => {
@@ -146,14 +142,14 @@ app.post("/status", async (req, res) => {
       const participantName = req.header("User");
   
       if (!participantName) {
-        return res.status(422).end();
+        return res.status(404).end();
       }
   
       const db = client.db();
       const participant = await db.collection("participants").findOne({ name: participantName });
   
       if (!participant) {
-        return res.status(422).end();
+        return res.status(404).end();
       }
   
       await db.collection("participants").updateOne(
@@ -215,7 +211,7 @@ app.get("/participants", async (req, res) => {
       res.status(500).json({ error: "Erro no servidor" });
     }
   });
-
+  
 // Função para remover participantes inativos
 async function removeInactiveParticipants() {
     try {
