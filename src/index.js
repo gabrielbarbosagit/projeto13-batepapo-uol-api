@@ -168,5 +168,84 @@ app.post("/status", async (req, res) => {
     }
   });
 
+    // GET PARTICIPANTS
+app.get("/participants", async (req, res) => {
+    try {
+      const db = client.db();
+      const participants = await db.collection("participants").find().toArray();
     
+      res.status(200).json(participants);
+    } catch (error) {
+      console.error("Erro ao buscar participantes:", error);
+      res.status(500).json({ error: "Erro no servidor" });
+    }
+  });
+
+  // GET MESSAGES 
+
+
+  app.get("/messages", async (req, res) => {
+    try {
+      const participantName = req.header("User");
+      const limit = parseInt(req.query.limit);
+  
+      if (isNaN(limit) || limit <= 0) {
+        return res.status(422).json({ error: "Parâmetro de limite inválido" });
+      }
+  
+      const db = client.db();
+      const query = {
+        $or: [
+          { to: participantName },
+          { from: participantName },
+          { to: "Todos" },
+          { type: "message" },
+        ],
+      };
+      const options = {
+        sort: { time: -1 },
+        limit: limit,
+      };
+  
+      const messages = await db.collection("messages").find(query, options).toArray();
+  
+      res.status(200).json(messages);
+    } catch (error) {
+      console.error("Erro ao obter mensagens:", error);
+      res.status(500).json({ error: "Erro no servidor" });
+    }
+  });
+  
+// Função para remover participantes inativos
+async function removeInactiveParticipants() {
+    try {
+      const db = client.db();
+      const tenSecondsAgo = Date.now() - 10000; // Tempo limite de 10 segundos atrás
+  
+      const result = await db.collection("participants").deleteMany({
+        lastStatus: { $lt: tenSecondsAgo },
+      });
+  
+      const deletedCount = result.deletedCount;
+  
+      if (deletedCount > 0) {
+        const message = {
+          from: "Servidor",
+          to: "Todos",
+          text: `${deletedCount} participante(s) removido(s) por inatividade`,
+          type: "status",
+          time: dayjs().format("HH:mm:ss"),
+        };
+  
+        await db.collection("messages").insertOne(message);
+      }
+    } catch (error) {
+      console.error("Erro ao remover participantes inativos:", error);
+    }
+  }
+  
+  // Executar a remoção automática a cada 15 segundos
+  setInterval(removeInactiveParticipants, 15000);
+    
+  
 
