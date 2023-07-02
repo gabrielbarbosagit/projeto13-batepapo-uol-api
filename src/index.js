@@ -146,14 +146,14 @@ app.post("/status", async (req, res) => {
       const participantName = req.header("User");
   
       if (!participantName) {
-        return res.status(404).end();
+        return res.status(422).end();
       }
   
       const db = client.db();
       const participant = await db.collection("participants").findOne({ name: participantName });
   
       if (!participant) {
-        return res.status(404).end();
+        return res.status(422).end();
       }
   
       await db.collection("participants").updateOne(
@@ -215,7 +215,7 @@ app.get("/participants", async (req, res) => {
       res.status(500).json({ error: "Erro no servidor" });
     }
   });
-  
+
 // Função para remover participantes inativos
 async function removeInactiveParticipants() {
     try {
